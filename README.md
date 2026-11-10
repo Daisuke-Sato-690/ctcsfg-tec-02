@@ -1,0 +1,2 @@
+# ctcsfg-tec-02
+ECS上で動作するPythonアプリケーションのCICDを検証するためのりぽいthonアプリケーションのCICDを検証するためのリポジトリ
