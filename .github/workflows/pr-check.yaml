@@ -1,0 +1,46 @@
+name: PR Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  pr-check:
+    name: PR Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if [ -z "$(echo "$PR_TITLE" | tr -d '[:space:]')" ]; then
+            echo "::error::PRタイトルを入力してください"
+            exit 1
+          fi
+          echo "PRタイトル: OK"
+
+      - name: Check PR description
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          if [ -z "$(echo "$PR_BODY" | tr -d '[:space:]')" ]; then
+            echo "::error::PR本文を入力してください"
+            exit 1
+          fi
+          echo "PR本文: OK"
+
+      - name: Check required sections
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          for section in "変更内容" "確認内容"; do
+            if ! grep -Fq "$section" <<< "$PR_BODY"; then
+              echo "::error::必須項目がありません: $section"
+              exit 1
+            fi
+          done
+          echo "必須項目: OK"
