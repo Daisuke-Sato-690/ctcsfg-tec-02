@@ -2,11 +2,24 @@ import argparse
 from datetime import datetime, timezone, timedelta
 
 import feedparser
+from fastapi import FastAPI
+
+app = FastAPI()
 
 RSS_URL = "https://www.snowflake.com/feed/"
 
 # 日本時間（UTC+9）
 JST = timezone(timedelta(hours=9))
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
+@app.get("/")
+def root():
+    return {"message": "hello"}
 
 
 def parse_date(value):

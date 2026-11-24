@@ -46,6 +46,11 @@ class TestImport(unittest.TestCase):
         self.assertEqual(out.getvalue(), "")
         parse.assert_not_called()
 
+    def test_health_and_root_endpoints(self):
+        main, _ = load_main()
+        self.assertEqual(main.health(), {"status": "ok"})
+        self.assertEqual(main.root(), {"message": "hello"})
+
 
 class TestParseDate(unittest.TestCase):
     def setUp(self):
