@@ -1,87 +1,33 @@
-name: Deploy to ECS
-
+name: push-image
 on:
   push:
     branches: [main]
-  workflow_dispatch:
-
-concurrency:
-  group: deploy-main
-  cancel-in-progress: false
-
+ 
 permissions:
   id-token: write
   contents: read
-
+ 
 env:
-  AWS_REGION: ${{ vars.AWS_REGION }}
-  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
-  ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
-  ECS_SERVICE: ${{ vars.ECS_SERVICE }}
-  ECS_TASK_DEFINITION_FAMILY: ${{ vars.ECS_TASK_DEFINITION_FAMILY }}
-  CONTAINER_NAME: ${{ vars.CONTAINER_NAME || 'app' }}
-
+  AWS_REGION: ap-northeast-1
+  ECR_REPOSITORY: ctc-zk-t2-2026-app
+ 
 jobs:
-  test:
-    name: Unit Tests
+  push-image:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+ 
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
-          python-version: "3.12"
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-      - name: Run tests
-        run: python -m unittest -v test_main
-
-  deploy:
-    name: Build, Push and Deploy
-    needs: test
-    runs-on: ubuntu-latest
-    environment: production
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-to-assume: arn:aws:iam::825382393140:role/ctc-zk-t2-2026-github-actions-role
           aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to Amazon ECR
-        id: ecr
+ 
+      - id: ecr
         uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build and push image
-        id: build
-        env:
-          REGISTRY: ${{ steps.ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
+ 
+      - name: Build & push
         run: |
-          IMAGE="$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-          docker build -t "$IMAGE" .
-          docker push "$IMAGE"
-          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
-
-      - name: Download current task definition
-        run: |
-          aws ecs describe-task-definition \
-            --task-definition "$ECS_TASK_DEFINITION_FAMILY" \
-            --query taskDefinition > task-definition.json
-
-      - name: Render task definition
-        id: render
-        uses: aws-actions/amazon-ecs-render-task-definition@v1
-        with:
-          task-definition: task-definition.json
-          container-name: ${{ env.CONTAINER_NAME }}
-          image: ${{ steps.build.outputs.image }}
-
-      - name: Deploy to ECS
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
-        with:
-          task-definition: ${{ steps.render.outputs.task-definition }}
-          service: ${{ env.ECS_SERVICE }}
-          cluster: ${{ env.ECS_CLUSTER }}
-          wait-for-service-stability: true
+          REPO=${{ steps.ecr.outputs.registry }}/${ECR_REPOSITORY}
+          docker build -t $REPO:${GITHUB_SHA} -t $REPO:latest .
+          docker push $REPO:${GITHUB_SHA}
+          docker push $REPO:latest
